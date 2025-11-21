@@ -84,7 +84,8 @@ PC4_ETLConstructionWithMongoDB/
     ├── ratings.ndjson
     ├── users.ndjson
     ├── similarities.ndjson
-    └── passwords_log.csv
+    ├── passwords_log.csv
+    └── report.txt                   # Reporte de ejecución
 ```
 
 ### Obtener los Archivos CSV
@@ -246,7 +247,10 @@ Cargando similitudes desde data\item_topk_cosine_conc.csv ...
 Generando similarities...
   ✓ Generadas 30202 entradas de similitud en out\similarities.ndjson
 
+  ✓ Reporte generado en out\report.txt
+
 === ETL completado exitosamente ===
+Tiempo total de ejecución: 5s
 ```
 
 ### Modo 2: Dataset Completo (Producción)
@@ -254,11 +258,17 @@ Generando similarities...
 **Tiempo estimado: 5-7 minutos (Fase 1) o 4-5 horas (Fase 2)**
 
 ```powershell
-# Fase 1: Solo datos locales (RÁPIDO - 5-7 min)
+# Fase 1: Solo datos locales, sin hashing (RÁPIDO - 5 segundos)
 go run main.go --hash-passwords=false
 
-# Fase 2: Con datos externos de TMDB (LENTO - 4-5 horas)
+# Fase 1: Solo datos locales, con hashing (LENTO - 10 minutos)
+go run main.go --hash-passwords=true
+
+# Fase 2: Con TMDB API, sin hashing (LENTO - 4-5 horas)
 go run main.go --fetch-external --hash-passwords=false
+
+# Fase 2: Con TMDB API, con hashing (MUY LENTO - 4-5 horas + 10 min)
+go run main.go --fetch-external --hash-passwords=true
 ```
 
 **⚠️ Importante para Fase 2:**
@@ -277,6 +287,7 @@ go run main.go --fetch-external --hash-passwords=false
 | `--min-relevance` | Relevancia mínima para genome tags | `0.5` |
 | `--top-genome-tags` | Top N genome tags por película | `10` |
 | `--hash-passwords` | Hashear passwords con bcrypt | `true` |
+| `--update-mappings` | Actualizar item_map.csv y user_map.csv con nuevos IDs | `false` |
 | `--fetch-external` | Obtener datos de TMDB API | `false` |
 | `--tmdb-api-key` | API key de TMDB | (lee de .env) |
 | `--tmdb-rate-limit` | Requests/segundo a TMDB | `4` |
@@ -633,10 +644,11 @@ Remove-Item out\*.ndjson, out\*.csv -Force
 
 Una vez completada la importación:
 
-1. **Explorar datos**: Usa mongosh o MongoDB Compass
-2. **Integrar con backend**: Conectar API REST a la base de datos
-3. **Implementar búsquedas**: Usar índices de texto y agregaciones
-4. **Sistema de recomendaciones**: Consumir colección `similarities`
-5. **Autenticación**: Usar colección `users` y `passwords_log.csv`
+1. **Revisar reporte**: Consulta `out/report.txt` para ver estadísticas y tiempos
+2. **Explorar datos**: Usa mongosh o MongoDB Compass
+3. **Integrar con backend**: Conectar API REST a la base de datos
+4. **Implementar búsquedas**: Usar índices de texto y agregaciones
+5. **Sistema de recomendaciones**: Consumir colección `similarities`
+6. **Autenticación**: Usar colección `users` y `passwords_log.csv`
 
 **¡El ETL está listo para alimentar tu sistema de recomendaciones!** 🎬🍿

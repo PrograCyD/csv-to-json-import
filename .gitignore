@@ -20,3 +20,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Ignore powershell script outputs
+*.ps1

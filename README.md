@@ -34,6 +34,7 @@ Los sistemas de recomendación modernos requieren:
 - **Integración externa**: APIs como TMDB proveen información visual y descriptiva esencial
 - **Eficiencia**: Procesamiento de millones de registros (25M+ ratings, 162K+ usuarios)
 - **Mapeo de IDs**: El sistema de recomendación usa índices remapeados (iIdx, uIdx) para optimización
+- **Mapeo dinámico**: Asignación automática de índices a nuevos usuarios/películas
 
 ### Impacto en el Sistema
 
@@ -163,6 +164,7 @@ El proceso ETL es fundamental en la ingeniería de datos:
   - Agregación de estadísticas (ratings promedio)
   - Ranking por relevancia/frecuencia (genome tags, user tags)
   - Mapeo de IDs (movieId↔iIdx, userId↔uIdx)
+  - **Mapeo dinámico**: Asignación automática de índices a nuevas entidades
   - Integración de APIs externas (TMDB)
 - **Load**: Generación de NDJSON para importación masiva en MongoDB
 
@@ -205,10 +207,15 @@ Donde:
 - `item_map.csv`: movieId → iIdx (0 a N-1 continuo)
 - `user_map.csv`: userId → uIdx (0 a M-1 continuo)
 
+**Mapeo Dinámico**:
+- `IDMapper`: Estructura thread-safe con `sync.RWMutex`
+- `GetOrCreate(id)`: Asigna automáticamente el siguiente índice disponible a IDs nuevos
+- `--update-mappings`: Flag para persistir cambios a CSVs
+
 **Beneficio**: 
 - Algoritmos de recomendación operan con matrices densas
 - Reducción de memoria (índices contiguos)
-- Optimización de consultas
+- Soporte automático para nuevas películas/usuarios sin regenerar modelo completo
 
 ### 5. Rate Limiting y Caching (TMDB API)
 
@@ -352,8 +359,9 @@ rateLimiter: time.Tick(time.Second / 4) // 4 req/s
 ### Lenguaje y Librerías
 
 - **Go 1.21+**: Eficiencia, concurrencia nativa, bajo consumo de memoria
-- **Librerías estándar**: `encoding/csv`, `encoding/json`, `net/http`, `bufio`
+- **Librerías estándar**: `encoding/csv`, `encoding/json`, `net/http`, `bufio`, `sync`
 - **bcrypt**: `golang.org/x/crypto/bcrypt` para hashing de passwords
+- **IDMapper**: Sistema de mapeo dinámico thread-safe para gestión de índices
 
 ### Base de Datos
 
