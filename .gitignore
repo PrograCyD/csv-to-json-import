@@ -1,11 +1,22 @@
 # Ignore output folder with generated NDJSON and binaries
 out/
 
-# Ignore CSV datasets (MovieLens)
-*.csv
+# Ignore data folder with CSV datasets (MovieLens)
+data/
 
 # Ignore any local binaries
 *.exe
 
+# Ignore API keys and environment files
+.env
+*.key
+
 # OS files
 .DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
