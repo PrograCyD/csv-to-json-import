@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	mathrand "math/rand"
 	"os"
 	"regexp"
 	"sort"
@@ -18,7 +19,9 @@ import (
 	"pc4_etl/internal/external"
 	"pc4_etl/internal/mappers"
 	"pc4_etl/internal/models"
+	"pc4_etl/internal/utils"
 
+	"github.com/jaswdr/faker"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -70,7 +73,7 @@ func hashPassword(password string) (string, error) {
 }
 
 // ProcessUsers genera users.ndjson con passwords hasheados
-func ProcessUsers(ratingsPath, outPath, passwordLogPath string, userMapper *mappers.IDMapper, hashPasswords bool) (int, error) {
+func ProcessUsers(ratingsPath, outPath, passwordLogPath string, userMapper *mappers.IDMapper, hashPasswords bool, allGenres []string) (int, error) {
 	// Primero, leer ratings para obtener todos los usuarios únicos
 	f, err := os.Open(ratingsPath)
 	if err != nil {
@@ -126,13 +129,23 @@ func ProcessUsers(ratingsPath, outPath, passwordLogPath string, userMapper *mapp
 	logWriter := bufio.NewWriter(logFile)
 	defer logWriter.Flush()
 
-	// Header del log
-	logWriter.WriteString("userId,uIdx,email,password,passwordHash\n")
+	// Header del log (actualizado con nuevos campos)
+	logWriter.WriteString("userId,uIdx,firstName,lastName,username,email,password,passwordHash\n")
+
+	// Inicializar faker y random
+	fake := faker.New()
+	mathrand.Seed(time.Now().UnixNano())
 
 	now := isoNow()
 	written := 0
 
 	for _, uid := range userIds {
+		// Generar nombre y apellido con faker
+		firstName, lastName := utils.GenerateRandomName(fake)
+
+		// Generar username
+		username := utils.GenerateUsername(firstName, lastName, uid)
+
 		// Generar email
 		email := fmt.Sprintf("user%d@email.com", uid)
 
@@ -152,13 +165,25 @@ func ProcessUsers(ratingsPath, outPath, passwordLogPath string, userMapper *mapp
 			passwordHash = hashed
 		}
 
+		// Seleccionar géneros favoritos aleatorios
+		preferredGenres := utils.SelectRandomGenres(allGenres)
+
+		// Generar About basado en los géneros
+		about := utils.GenerateAbout(preferredGenres)
+
 		// Crear documento
 		doc := models.UserDoc{
-			UserID:       uid,
-			Email:        email,
-			PasswordHash: passwordHash,
-			Role:         "user",
-			CreatedAt:    now,
+			UserID:          uid,
+			FirstName:       firstName,
+			LastName:        lastName,
+			Username:        username,
+			Email:           email,
+			PasswordHash:    passwordHash,
+			Role:            "user",
+			About:           about,
+			PreferredGenres: preferredGenres,
+			CreatedAt:       now,
+			UpdatedAt:       now, // Inicialmente igual a CreatedAt
 		}
 
 		// Agregar uIdx usando el mapper dinámico
@@ -175,7 +200,8 @@ func ProcessUsers(ratingsPath, outPath, passwordLogPath string, userMapper *mapp
 		if doc.UIdx != nil {
 			uIdxStr = fmt.Sprintf("%d", *doc.UIdx)
 		}
-		logWriter.WriteString(fmt.Sprintf("%d,%s,%s,%s,%s\n", uid, uIdxStr, email, password, passwordHash))
+		logWriter.WriteString(fmt.Sprintf("%d,%s,%s,%s,%s,%s,%s,%s\n",
+			uid, uIdxStr, firstName, lastName, username, email, password, passwordHash))
 
 		written++
 	}

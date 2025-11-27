@@ -176,6 +176,19 @@ func main() {
 		userMapper = mappers.NewIDMapper(userMap)
 	}
 
+	// Cargar géneros únicos si se van a procesar usuarios
+	var allGenres []string
+	if *processUsers {
+		fmt.Println("Extrayendo géneros únicos de movies.csv...")
+		var err error
+		allGenres, err = loaders.ExtractUniqueGenres(moviesPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Advertencia: no se pudieron extraer géneros: %v\n", err)
+			allGenres = []string{"Action", "Adventure", "Comedy", "Drama", "Thriller"} // Fallback
+		}
+		fmt.Printf("  ✓ %d géneros únicos extraídos\n", len(allGenres))
+	}
+
 	// Procesar archivos según flags
 	var mcount, rcount, ucount, scount int
 
@@ -218,7 +231,7 @@ func main() {
 		fmt.Println()
 		fmt.Println("Generando users con passwords hasheados...")
 		var uerr error
-		ucount, uerr = processors.ProcessUsers(ratingsPath, usersOut, passwordLogOut, userMapper, *hashPasswords)
+		ucount, uerr = processors.ProcessUsers(ratingsPath, usersOut, passwordLogOut, userMapper, *hashPasswords, allGenres)
 		if uerr != nil {
 			fmt.Fprintln(os.Stderr, "error generando users:", uerr)
 			os.Exit(1)

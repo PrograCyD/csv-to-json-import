@@ -438,3 +438,55 @@ func LoadSimilarities(path string, itemMapper *mappers.IDMapper) (map[int][]mode
 
 	return similarities, nil
 }
+
+// ExtractUniqueGenres extrae todos los géneros únicos del archivo movies.csv
+func ExtractUniqueGenres(path string) ([]string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	r := csv.NewReader(bufio.NewReader(f))
+	r.FieldsPerRecord = -1
+
+	// skip header
+	if _, err := r.Read(); err != nil {
+		return nil, err
+	}
+
+	genresMap := make(map[string]struct{})
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil || len(rec) < 3 {
+			continue
+		}
+
+		// Los géneros están en la tercera columna, separados por |
+		genresStr := strings.TrimSpace(rec[2])
+		if genresStr == "" || genresStr == "(no genres listed)" {
+			continue
+		}
+
+		// Dividir por | y agregar cada género
+		genres := strings.Split(genresStr, "|")
+		for _, genre := range genres {
+			genre = strings.TrimSpace(genre)
+			if genre != "" && genre != "(no genres listed)" {
+				genresMap[genre] = struct{}{}
+			}
+		}
+	}
+
+	// Convertir map a slice y ordenar
+	genresList := make([]string, 0, len(genresMap))
+	for genre := range genresMap {
+		genresList = append(genresList, genre)
+	}
+	sort.Strings(genresList)
+
+	return genresList, nil
+}
